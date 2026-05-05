@@ -45,7 +45,7 @@ export default function PlanGenerator({ user }) {
     } else {
       try { const s = localStorage.getItem('pulse_weekly_plan'); if (s) { setPlan(JSON.parse(s)); return } } catch {}
     }
-    generatePlan()
+    // no plan found, user clicks generate manually
   }
 
   const generatePlan = async () => {
