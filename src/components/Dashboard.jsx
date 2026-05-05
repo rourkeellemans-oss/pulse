@@ -198,18 +198,18 @@ export default function Dashboard() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           system: SYSTEM_PROMPT,
           messages: newHistory,
         }),
       })
       const data = await res.json()
-      const reply = data.content?.[0]?.text ?? 'API Error: ' + JSON.stringify(data)
+      const reply = data.content?.[0]?.text ?? 'Connection issue — check your API key in .env'
       const coachMsg = { role: 'coach', text: reply, time: getTime() }
       setMessages(prev => [...prev, coachMsg])
       setApiHistory(prev => [...prev, { role: 'assistant', content: reply }])
@@ -241,7 +241,7 @@ export default function Dashboard() {
       </div>
 
       {/* Body */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gridTemplateRows: 'auto', flex: 1, gap: 1, background: 'var(--subtle)', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 340px', gridTemplateRows: 'auto 1fr', flex: 1, gap: 1, background: 'var(--subtle)', overflow: 'hidden' }}>
 
         {/* ── Readiness ── */}
         <div style={{ background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
