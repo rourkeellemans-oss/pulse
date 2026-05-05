@@ -45,8 +45,24 @@ export default function App() {
           loadProfile(session.user.id)
         }
       } else {
-        if (cachedProfile) localStorage.removeItem('pulse_profile')
-        setStep('onboarding')
+        // No session - but wait a moment in case token is still refreshing
+        setTimeout(() => {
+          supabase.auth.getSession().then(({ data: { session: s2 } }) => {
+            if (s2?.user) {
+              setUser(s2.user)
+              if (cachedProfile) {
+                setProfile(JSON.parse(cachedProfile))
+                setStep('app')
+                loadProfile(s2.user.id)
+              } else {
+                loadProfile(s2.user.id)
+              }
+            } else {
+              if (cachedProfile) localStorage.removeItem('pulse_profile')
+              setStep('onboarding')
+            }
+          })
+        }, 1000)
       }
     })
 
