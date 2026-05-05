@@ -36,7 +36,7 @@ export default function PlanGenerator({ user }) {
     if (data?.training_readiness) setReadiness(data)
   }
 
-  useEffect(() => { loadSavedPlan() }, [])
+  useEffect(() => { if (user) loadSavedPlan() }, [user])
   const loadSavedPlan = async () => {
     if (user) {
       setUserId(user.id)
