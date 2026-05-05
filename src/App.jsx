@@ -7,7 +7,6 @@ import Dashboard from './components/Dashboard'
 import PlanGenerator from './components/PlanGenerator'
 import CheckIn from './components/CheckIn'
 
-
 const THEMES = {
   dark: { bg:'#080b10',surface:'#0e1219',card:'#141920',card2:'#1a2130',text:'#e8eef5',muted:'#5a6a7e',subtle:'#1e2a38',border:'#1e2a38',accent:'#00d4aa',accent2:'#00a8ff',amber:'#f59e0b',purple:'#a855f7',green:'#22c55e',shadow:'0 2px 12px rgba(0,0,0,0.4)' },
   light: { bg:'#f5f6fa',surface:'#ffffff',card:'#ffffff',card2:'#f0f4f8',text:'#1a1a2e',muted:'#6b7a8d',subtle:'#e2e8f0',border:'#e2e8f0',accent:'#00a67e',accent2:'#0066cc',amber:'#d97706',purple:'#7c3aed',green:'#059669',shadow:'0 2px 12px rgba(0,0,0,0.08)' }
@@ -22,8 +21,9 @@ export default function App() {
   const [tempProfile, setTempProfile] = useState(null)
   const [page, setPage] = useState(() => localStorage.getItem('pulse_page') || 'dashboard')
   const [isDark, setIsDark] = useState(() => localStorage.getItem('pulse_theme') !== 'light')
-  const navigateTo = (p) => { setPage(p); localStorage.setItem('pulse_page', p) }
+
   const t = isDark ? THEMES.dark : THEMES.light
+  const navigateTo = (p) => { setPage(p); localStorage.setItem('pulse_page', p) }
 
   const toggleTheme = () => {
     const next = !isDark
@@ -33,14 +33,11 @@ export default function App() {
   }
 
   useEffect(() => {
-    // Check for cached profile first for instant load
     const cachedProfile = localStorage.getItem('pulse_profile')
-    
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user)
         if (cachedProfile) {
-          // Use cached profile immediately, verify in background
           setProfile(JSON.parse(cachedProfile))
           setStep('app')
           loadProfile(session.user.id)
@@ -48,19 +45,14 @@ export default function App() {
           loadProfile(session.user.id)
         }
       } else {
-        if (cachedProfile) {
-          // Had a profile but no session — show onboarding
-          localStorage.removeItem('pulse_profile')
-        }
+        if (cachedProfile) localStorage.removeItem('pulse_profile')
         setStep('onboarding')
       }
     })
 
     let initialLoadDone = false
     setTimeout(() => { initialLoadDone = true }, 2000)
-    setTimeout(() => { initialLoadDone = true }, 2000)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!initialLoadDone) return
       if (!initialLoadDone) return
       if (session?.user) {
         setUser(session.user)
@@ -110,7 +102,6 @@ export default function App() {
     setTempProfile(null)
     localStorage.removeItem('pulse_profile')
     localStorage.removeItem('pulse_weekly_plan')
-    localStorage.removeItem('pulse_page')
     localStorage.removeItem('pulse_page')
     setStep('onboarding')
   }
