@@ -49,7 +49,7 @@ export default function PlanGenerator({ user }) {
         body: JSON.stringify({
           model: 'claude-sonnet-4-5', max_tokens: 4000,
           system: 'You are Coach Pulse, expert triathlon coach. Return ONLY valid JSON, no markdown, no explanation.',
-          messages: [{ role: 'user', content: `Generate weekly training plan: Ironman Melbourne Nov 2027 (${WEEKS_TO_RACE} weeks away), ${phase} phase, week ${weekNumber}, ${bodyWeight}kg, body recomposition, soccer Thursday + ${soccerGameDay} locked, gym 3x, 8-10hrs/week. Return JSON: {weekTheme,totalHours,keyFocus,coachNote,days:[{name,isLocked,sessions:[{type,duration,focus}],calories}],nutrition:{trainingDay,soccerDay,longSessionDay,restDay each:{calories,protein,carbs,fat}},weeklyGoals:[{category,target,description}]}` }]
+          messages: [{ role: 'user', content: `Generate weekly training plan. IMPORTANT: today readiness context (inject only if available): use variable readiness from state. Generate weekly training plan: Ironman Melbourne Nov 2027 (${WEEKS_TO_RACE} weeks away), ${phase} phase, week ${weekNumber}, ${bodyWeight}kg, body recomposition, soccer Thursday + ${soccerGameDay} locked, gym 3x, 8-10hrs/week. Return JSON: {weekTheme,totalHours,keyFocus,coachNote,days:[{name,isLocked,sessions:[{type,duration,focus}],calories}],nutrition:{trainingDay,soccerDay,longSessionDay,restDay each:{calories,protein,carbs,fat}},weeklyGoals:[{category,target,description}]}` }]
         })
       })
       const data = await res.json()
@@ -80,6 +80,15 @@ export default function PlanGenerator({ user }) {
         </div>
       </div>
 
+      {readiness && (
+        <div style={{ background: readiness.training_readiness >= 70 ? '#22c55e18' : readiness.training_readiness >= 50 ? '#f59e0b18' : '#ef444418', border: '1px solid ' + (readiness.training_readiness >= 70 ? '#22c55e40' : readiness.training_readiness >= 50 ? '#f59e0b40' : '#ef444440'), borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: readiness.training_readiness >= 70 ? '#22c55e' : readiness.training_readiness >= 50 ? '#f59e0b' : '#ef4444', textTransform: 'uppercase', marginBottom: 2 }}>Today's Training Readiness</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, color: t.text }}>{readiness.training_readiness >= 70 ? '✅ You are good to go — full intensity today' : readiness.training_readiness >= 50 ? '⚠️ Moderate readiness — keep effort controlled' : '🔴 Low readiness — consider recovery or easy session only'}</div>
+          </div>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 36, fontWeight: 800, color: readiness.training_readiness >= 70 ? '#22c55e' : readiness.training_readiness >= 50 ? '#f59e0b' : '#ef4444' }}>{readiness.training_readiness}</div>
+        </div>
+      )}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
         {[
           { label:'Soccer game day', el:<select value={soccerGameDay} onChange={e=>setSoccerGameDay(e.target.value)} style={{background:t.card2,border:`1px solid ${t.border}`,borderRadius:6,padding:'6px 8px',color:t.text,fontFamily:'DM Mono, monospace',fontSize:11,width:'100%'}}><option value="saturday">Saturday</option><option value="sunday">Sunday</option></select> },

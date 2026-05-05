@@ -17,7 +17,7 @@ export default function CheckIn({ t, user }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const [stats, setStats] = useState({ hrv: '', body_battery: '', sleep_score: '', sleep_hours: '', resting_hr: '', stress: '', notes: '' })
+  const [stats, setStats] = useState({ hrv: '', body_battery: '', sleep_score: '', sleep_hours: '', resting_hr: '', stress: '', training_readiness: '', notes: '' })
   const [session, setSession] = useState({ discipline: 'Run', duration_minutes: '', distance: '', distance_unit: 'km', perceived_effort: 3, notes: '', completed: true })
 
   useEffect(() => { if (user) { loadTodayStats(); loadSessions() } }, [user])
@@ -76,6 +76,7 @@ export default function CheckIn({ t, user }) {
       {todayStats && (
         <div style={{ background: `${t.accent}10`, border: `1px solid ${t.accent}30`, borderRadius: 10, padding: 12, marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
           {[
+            { label: 'Readiness', value: todayStats.training_readiness, unit: '/100', color: readinessColor(todayStats.training_readiness) },
             { label: 'HRV', value: todayStats.hrv, unit: 'ms', color: readinessColor(todayStats.hrv) },
             { label: 'Body Battery', value: todayStats.body_battery, unit: '/100', color: readinessColor(todayStats.body_battery) },
             { label: 'Sleep', value: todayStats.sleep_score, unit: '/100', color: readinessColor(todayStats.sleep_score) },
@@ -101,6 +102,7 @@ export default function CheckIn({ t, user }) {
           <div style={{ background: t.surface, borderRadius: 12, padding: 16, border: `1px solid ${t.border}`, boxShadow: t.shadow, marginBottom: 16 }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 16 }}>Today's health metrics</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={field}><label style={lbl}>Training Readiness</label><input type="number" value={stats.training_readiness || ''} onChange={e => setStats(p => ({...p, training_readiness: e.target.value}))} placeholder="0-100 (from Garmin)" style={inp({})} /></div>
               <div style={field}><label style={lbl}>HRV (ms)</label><input type="number" value={stats.hrv || ''} onChange={e => setStats(p => ({...p, hrv: e.target.value}))} placeholder="e.g. 52" style={inp({})} /></div>
               <div style={field}><label style={lbl}>Body Battery</label><input type="number" value={stats.body_battery || ''} onChange={e => setStats(p => ({...p, body_battery: e.target.value}))} placeholder="0-100" style={inp({})} /></div>
               <div style={field}><label style={lbl}>Sleep score</label><input type="number" value={stats.sleep_score || ''} onChange={e => setStats(p => ({...p, sleep_score: e.target.value}))} placeholder="0-100" style={inp({})} /></div>
