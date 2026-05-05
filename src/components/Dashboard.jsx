@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 const THEMES = {
   dark: { bg:'#080b10',surface:'#0e1219',card:'#141920',card2:'#1a2130',text:'#e8eef5',muted:'#5a6a7e',subtle:'#1e2a38',border:'#1e2a38',accent:'#00d4aa',accent2:'#00a8ff',amber:'#f59e0b',purple:'#a855f7',green:'#22c55e',shadow:'0 2px 12px rgba(0,0,0,0.4)' },
