@@ -5,6 +5,8 @@ import Auth from './components/Auth'
 import Onboarding from './components/Onboarding'
 import Dashboard from './components/Dashboard'
 import PlanGenerator from './components/PlanGenerator'
+import CheckIn from './components/CheckIn'
+
 
 const THEMES = {
   dark: { bg:'#080b10',surface:'#0e1219',card:'#141920',card2:'#1a2130',text:'#e8eef5',muted:'#5a6a7e',subtle:'#1e2a38',border:'#1e2a38',accent:'#00d4aa',accent2:'#00a8ff',amber:'#f59e0b',purple:'#a855f7',green:'#22c55e',shadow:'0 2px 12px rgba(0,0,0,0.4)' },
@@ -108,7 +110,8 @@ export default function App() {
   const NavBar = () => (
     <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:999, display:'flex', background:t.surface, borderTop:`1px solid ${t.border}`, padding:'8px 16px', gap:8 }}>
       <button onClick={() => setPage('dashboard')} style={{ flex:1, background: page==='dashboard' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='dashboard' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Dashboard</button>
-      <button onClick={() => setPage('plan')} style={{ flex:1, background: page==='plan' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='plan' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Weekly Plan</button>
+      <button onClick={() => setPage('plan')} style={{ flex:1, background: page==='plan' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='plan' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Plan</button>
+      <button onClick={() => setPage('checkin')} style={{ flex:1, background: page==='checkin' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='checkin' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Check In</button>
       <button onClick={toggleTheme} style={{ background:t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 14px', color:t.muted, fontSize:14, cursor:'pointer' }}>{isDark ? '☀️' : '🌙'}</button>
       {step === 'app' && <button onClick={handleSignOut} style={{ background:'transparent', border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 14px', color:t.muted, fontFamily:'Barlow Condensed, sans-serif', fontSize:13, cursor:'pointer' }}>↩</button>}
       {step === 'preview' && <button onClick={handleSavePlan} style={{ background:`linear-gradient(135deg,${t.accent},${t.accent2})`, border:'none', borderRadius:8, padding:'10px 16px', color:'#fff', fontFamily:'Barlow Condensed, sans-serif', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>💾 Save</button>}
@@ -129,7 +132,8 @@ export default function App() {
       <NavBar />
       {page === 'dashboard'
         ? <Dashboard t={t} onToggleTheme={toggleTheme} isDark={isDark} />
-        : <PlanGenerator profile={profile || tempProfile} t={t} isDark={isDark} user={user} />
+        : page === 'plan' ? <PlanGenerator profile={profile || tempProfile} t={t} isDark={isDark} user={user} />
+        : <CheckIn t={t} user={user} />
       }
     </div>
   )
