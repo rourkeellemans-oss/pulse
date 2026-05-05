@@ -1,71 +1,45 @@
-import { useState, useEffect } from 'react'
+node << 'EOF'
+const fs = require('fs');
+const https = require('https');
+
+// Write PlanGenerator directly
+const code = `import { useState, useRef, useEffect } from 'react'
 
 const RACE_DATE = new Date('2027-11-07')
 const CURRENT_DATE = new Date()
 const WEEKS_TO_RACE = Math.ceil((RACE_DATE - CURRENT_DATE) / (1000 * 60 * 60 * 24 * 7))
 
-const SYSTEM_PROMPT = `You are Coach Pulse, an expert AI triathlon coach and sports nutritionist.
-
-Athlete profile:
-- Goal: Ironman Melbourne, November 2027 (${WEEKS_TO_RACE} weeks away)
-- Current training: Soccer (Thursday training, alternating Saturday/Sunday games — these are LOCKED and cannot be moved)
-- Gym: 3x per week (strength and conditioning)
-- Available training hours: 8-10 hours per week
-- Body composition goal: Body recomposition — lose fat while gaining muscle
-- Sports: Triathlon (swim/bike/run) + soccer + gym
-
-When generating a weekly training plan, ALWAYS:
-1. Lock Thursday as soccer training day
-2. Account for Saturday OR Sunday as potential soccer game day
-3. Distribute swim, bike, run across remaining days
-4. Include gym 3x per week (can combine with swim/run days)
-5. Include at least 1 full rest/recovery day
-6. Consider Ironman progression — currently in BASE BUILDING phase
-7. Keep total hours between 8-10 per week
-
-When generating nutrition targets for body recomposition:
-- Create a moderate calorie deficit (300-400 cal below TDEE)
-- High protein (1.8-2.2g per kg bodyweight)
-- Carb cycle around hard training days
-- Account for soccer as HIGH carb day
-- Account for long bike/run as HIGH carb day
-- Rest days as LOWER carb
-
-Always respond in valid JSON only — no markdown, no explanation, just the JSON object.`
-
 const DAY_COLORS = {
-  swim: '#00a8ff',
-  bike: '#f59e0b', 
-  run: '#00d4aa',
-  gym: '#a855f7',
-  soccer: '#22c55e',
-  rest: '#5a6a7e',
-  recover: '#5a6a7e',
+  swim: '#00a8ff', bike: '#f59e0b', run: '#00d4aa',
+  gym: '#a855f7', soccer: '#22c55e', rest: '#5a6a7e', recover: '#5a6a7e',
+}
+const MACRO_COLORS = { protein: '#00d4aa', carbs: '#00a8ff', fat: '#f59e0b' }
+
+function buildSystemPrompt(plan, profile) {
+  return \`You are Coach Pulse, an expert AI triathlon coach embedded in the Pulse app.
+Athlete: Ironman Melbourne Nov 2027 (\${WEEKS_TO_RACE} weeks away), \${profile.bodyWeight}kg, body recomposition goal.
+Soccer locked: Thursday training + \${profile.soccerGameDay} game. Phase: \${profile.phase}. Week: \${profile.weekNumber}.
+\${plan ? 'Current plan: ' + JSON.stringify(plan) : 'No plan yet.'}
+Be conversational, specific, warm. Max 4 sentences unless asked for more.\`
 }
 
-const MACRO_COLORS = {
-  protein: '#00d4aa',
-  carbs: '#00a8ff',
-  fat: '#f59e0b',
-}
-
-function WeekCalendar({ plan, soccerGameDay }) {
+function WeekCalendar({ plan }) {
   if (!plan?.days) return null
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 8 }}>
       {plan.days.map((day, i) => (
         <div key={i} style={{
           background: day.isLocked ? 'rgba(34,197,94,0.08)' : '#141920',
-          border: `1px solid ${day.isLocked ? 'rgba(34,197,94,0.3)' : '#1e2a38'}`,
+          border: \`1px solid \${day.isLocked ? 'rgba(34,197,94,0.3)' : '#1e2a38'}\`,
           borderRadius: 10, padding: 12, minHeight: 180,
         }}>
           <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e', textTransform: 'uppercase', marginBottom: 4 }}>{day.name}</div>
-          {day.isLocked && <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 8, color: '#22c55e', marginBottom: 6 }}>🔒 locked</div>}
+          {day.isLocked && <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 8, color: '#22c55e', marginBottom: 6 }}>locked</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {day.sessions?.map((s, j) => (
               <div key={j} style={{
-                background: `${DAY_COLORS[s.type] || '#5a6a7e'}18`,
-                border: `1px solid ${DAY_COLORS[s.type] || '#5a6a7e'}40`,
+                background: \`\${DAY_COLORS[s.type] || '#5a6a7e'}18\`,
+                border: \`1px solid \${DAY_COLORS[s.type] || '#5a6a7e'}40\`,
                 borderRadius: 5, padding: '4px 7px',
               }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, color: DAY_COLORS[s.type] || '#5a6a7e', textTransform: 'uppercase' }}>{s.type}</div>
@@ -74,9 +48,7 @@ function WeekCalendar({ plan, soccerGameDay }) {
               </div>
             ))}
           </div>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#f59e0b', marginTop: 8 }}>
-            {day.calories ? `${day.calories} kcal` : ''}
-          </div>
+          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#f59e0b', marginTop: 8 }}>{day.calories ? day.calories + ' kcal' : ''}</div>
         </div>
       ))}
     </div>
@@ -93,7 +65,7 @@ function NutritionCard({ nutrition }) {
         { label: 'Long session', data: nutrition.longSessionDay, color: '#00a8ff' },
         { label: 'Rest day', data: nutrition.restDay, color: '#5a6a7e' },
       ].map((d, i) => (
-        <div key={i} style={{ background: '#141920', border: `1px solid ${d.color}30`, borderRadius: 10, padding: 14 }}>
+        <div key={i} style={{ background: '#141920', border: \`1px solid \${d.color}30\`, borderRadius: 10, padding: 14 }}>
           <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: d.color, textTransform: 'uppercase', marginBottom: 8 }}>{d.label}</div>
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 28, fontWeight: 800, color: d.color }}>{d.data?.calories}</div>
           <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e', marginBottom: 10 }}>kcal / day</div>
@@ -104,7 +76,7 @@ function NutritionCard({ nutrition }) {
                 <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#e8eef5' }}>{d.data?.[macro]}g</span>
               </div>
               <div style={{ height: 3, background: '#1e2a38', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', borderRadius: 2, background: MACRO_COLORS[macro], width: `${Math.min(100, (d.data?.[macro] / (macro === 'protein' ? 200 : macro === 'carbs' ? 400 : 100)) * 100)}%` }} />
+                <div style={{ height: '100%', borderRadius: 2, background: MACRO_COLORS[macro], width: Math.min(100, (d.data?.[macro] / (macro === 'protein' ? 200 : macro === 'carbs' ? 400 : 100)) * 100) + '%' }} />
               </div>
             </div>
           ))}
@@ -129,93 +101,120 @@ function WeeklyGoals({ goals }) {
   )
 }
 
-export default function PlanGenerator() {
+function ChatBubble({ plan, profile }) {
+  const [open, setOpen] = useState(false)
+  const [messages, setMessages] = useState([
+    { role: 'coach', text: "Hey! Your plan is ready above.\n\nAsk me anything about your sessions, nutrition, or how to adapt if you're tired. I know exactly what's in your week." }
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [apiHistory, setApiHistory] = useState([
+    { role: 'user', content: 'Hi coach, I can see my weekly plan.' },
+    { role: 'assistant', content: "Hey! Your plan is ready above.\n\nAsk me anything about your sessions, nutrition, or how to adapt if you're tired. I know exactly what's in your week." }
+  ])
+  const endRef = useRef(null)
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading, open])
+
+  const send = async (text) => {
+    if (!text.trim() || loading) return
+    const newHistory = [...apiHistory, { role: 'user', content: text }]
+    setMessages(prev => [...prev, { role: 'user', text }])
+    setApiHistory(newHistory)
+    setInput('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1000, system: buildSystemPrompt(plan, profile), messages: newHistory })
+      })
+      const data = await res.json()
+      const reply = data.content?.[0]?.text ?? 'Connection issue.'
+      setMessages(prev => [...prev, { role: 'coach', text: reply }])
+      setApiHistory(prev => [...prev, { role: 'assistant', content: reply }])
+    } catch { setMessages(prev => [...prev, { role: 'coach', text: 'Connection issue.' }]) }
+    setLoading(false)
+  }
+
+  const quick = ["My legs are heavy, should I swap anything?","What should I eat before Thursday soccer?","How hard should today's run feel?","Explain my nutrition targets"]
+
+  return (
+    <>
+      <button onClick={() => setOpen(o => !o)} style={{ position: 'fixed', bottom: 24, right: 24, width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#00d4aa,#00a8ff)', border: 'none', cursor: 'pointer', fontSize: 22, zIndex: 1000, boxShadow: '0 4px 20px rgba(0,212,170,0.4)' }}>
+        {open ? '✕' : '⚡'}
+      </button>
+      {!open && <div style={{ position: 'fixed', bottom: 72, right: 24, width: 10, height: 10, borderRadius: '50%', background: '#00d4aa', zIndex: 1001, border: '2px solid #080b10' }} />}
+      {open && (
+        <div style={{ position: 'fixed', bottom: 90, right: 24, width: 360, height: 520, background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 16, display: 'flex', flexDirection: 'column', zIndex: 1000, boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #1e2a38', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#141920', border: '1px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⚡</div>
+            <div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700, letterSpacing: 1 }}>COACH PULSE</div>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#00d4aa' }}>Knows your plan · ask anything</div>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'coach' ? 'flex-start' : 'flex-end', marginBottom: 10 }}>
+                <div style={{ maxWidth: '88%', padding: '9px 13px', borderRadius: 12, fontSize: 12, lineHeight: 1.6, borderBottomLeftRadius: m.role === 'coach' ? 3 : 12, borderBottomRightRadius: m.role === 'coach' ? 12 : 3, background: m.role === 'coach' ? '#1a2130' : 'rgba(0,212,170,0.1)', border: m.role === 'coach' ? '1px solid #1e2a38' : '1px solid rgba(0,212,170,0.25)', whiteSpace: 'pre-wrap', color: '#e8eef5' }}>{m.text}</div>
+              </div>
+            ))}
+            {loading && <div style={{ display: 'flex', gap: 4, padding: 8 }}>{[0,1,2].map(i => <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#00d4aa', opacity: 0.4, animation: \`blink 1.2s infinite \${i*0.2}s\` }} />)}</div>}
+            <div ref={endRef} />
+          </div>
+          {messages.length < 3 && (
+            <div style={{ padding: '0 12px 8px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {quick.map((q, i) => <button key={i} onClick={() => send(q)} style={{ background: '#141920', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#8899aa', fontSize: 11, textAlign: 'left', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>{q}</button>)}
+            </div>
+          )}
+          <div style={{ padding: '10px 12px', borderTop: '1px solid #1e2a38', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send(input)} placeholder="Ask about your plan..." style={{ flex: 1, background: '#141920', border: '1px solid #1e2a38', borderRadius: 8, padding: '8px 12px', color: '#e8eef5', fontFamily: 'Barlow, sans-serif', fontSize: 12, outline: 'none' }} />
+            <button onClick={() => send(input)} disabled={loading} style={{ background: 'linear-gradient(135deg,#00d4aa,#00a8ff)', border: 'none', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: loading ? 0.5 : 1 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      )}
+      <style>{\`@keyframes blink{0%,100%{opacity:0.2}50%{opacity:1}}\`}</style>
+    </>
+  )
+}
+
+export default function PlanGenerator({ profile, t: themeProp, onToggleTheme, isDark }) {
+  const t = themeProp || { bg:'#080b10',surface:'#0e1219',card:'#141920',card2:'#1a2130',text:'#e8eef5',muted:'#5a6a7e',subtle:'#1e2a38',border:'#1e2a38',accent:'#00d4aa',accent2:'#00a8ff',amber:'#f59e0b',purple:'#a855f7',green:'#22c55e',shadow:'0 2px 12px rgba(0,0,0,0.4)' }
   const [plan, setPlan] = useState(null)
   const [loading, setLoading] = useState(false)
   const [soccerGameDay, setSoccerGameDay] = useState('saturday')
   const [bodyWeight, setBodyWeight] = useState(80)
   const [phase, setPhase] = useState('base')
   const [weekNumber, setWeekNumber] = useState(1)
+  const profile = { soccerGameDay, bodyWeight, phase, weekNumber }
 
   const generatePlan = async () => {
     setLoading(true)
     setPlan(null)
     try {
-      const prompt = `Generate a complete weekly training plan for an athlete with these details:
-- Ironman Melbourne November 2027 (${WEEKS_TO_RACE} weeks away)
-- Current phase: ${phase} building
-- Week number: ${weekNumber} of training
-- Body weight: ${bodyWeight}kg
-- Body recomposition goal (lose fat, gain muscle)
-- Soccer: Thursday training (locked), ${soccerGameDay} game (locked)
-- Gym 3x per week
-- 8-10 hours total training per week
-
-Return ONLY a JSON object with this exact structure:
-{
-  "weekTheme": "string — theme for this week e.g. 'Aerobic base + technique'",
-  "totalHours": "string e.g. '9.5 hours'",
-  "keyFocus": "string — main coaching focus this week",
-  "days": [
-    {
-      "name": "Monday",
-      "isLocked": false,
-      "sessions": [
-        { "type": "swim|bike|run|gym|soccer|rest|recover", "duration": "45 min", "focus": "brief description", "intensity": "zone 1-2" }
-      ],
-      "calories": 2400
-    }
-  ],
-  "nutrition": {
-    "trainingDay": { "calories": 2600, "protein": 180, "carbs": 280, "fat": 75 },
-    "soccerDay":   { "calories": 2800, "protein": 175, "carbs": 320, "fat": 70 },
-    "longSessionDay": { "calories": 3000, "protein": 185, "carbs": 360, "fat": 72 },
-    "restDay":     { "calories": 2100, "protein": 185, "carbs": 160, "fat": 72 }
-  },
-  "weeklyGoals": [
-    { "category": "Swim", "target": "3.2km total", "description": "Focus on stroke efficiency" },
-    { "category": "Bike", "target": "120km total", "description": "All Zone 2, aerobic base" },
-    { "category": "Run", "target": "25km total", "description": "Easy pace, HR under 145" },
-    { "category": "Strength", "target": "3 sessions", "description": "Hip stability and core" },
-    { "category": "Nutrition", "target": "300 cal deficit", "description": "High protein on all days" },
-    { "category": "Recovery", "target": "8h sleep", "description": "Prioritise sleep for adaptation" }
-  ],
-  "coachNote": "string — 2-3 sentence personal coaching note for this week"
-}`
-
       const res = await fetch('/api/v1/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 4000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: prompt }]
+          model: 'claude-sonnet-4-5', max_tokens: 4000,
+          system: 'You are Coach Pulse, expert triathlon coach. Return ONLY valid JSON, no markdown.',
+          messages: [{ role: 'user', content: \`Generate weekly training plan: Ironman Melbourne Nov 2027 (\${WEEKS_TO_RACE} weeks away), \${phase} phase, week \${weekNumber}, \${bodyWeight}kg, body recomposition, soccer Thursday + \${soccerGameDay} locked, gym 3x, 8-10hrs/week. Return JSON: {weekTheme, totalHours, keyFocus, coachNote, days:[{name,isLocked,sessions:[{type,duration,focus,intensity}],calories}], nutrition:{trainingDay,soccerDay,longSessionDay,restDay each with calories,protein,carbs,fat}, weeklyGoals:[{category,target,description}]}\` }]
         })
       })
       const data = await res.json()
       const text = data.content?.[0]?.text || '{}'
-      const clean = text.replace(/```json|```/g, '').trim()
-      const parsed = JSON.parse(clean)
-      setPlan(parsed)
-    } catch (e) {
-      console.error(e)
-    }
+      setPlan(JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim()))
+    } catch(e) { console.error(e) }
     setLoading(false)
   }
 
   useEffect(() => { generatePlan() }, [])
-
   const daysToRace = Math.ceil((RACE_DATE - CURRENT_DATE) / (1000 * 60 * 60 * 24))
 
   return (
-    <div style={{ height: '100vh', background: '#080b10', color: '#e8eef5', fontFamily: 'Barlow, sans-serif', overflowY: 'auto', padding: 24 }}>
-
-      {/* Header */}
+    <div style={{ minHeight: '100vh', background: '#080b10', color: '#e8eef5', fontFamily: 'Barlow, sans-serif', padding: 24, paddingBottom: 100 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 28, fontWeight: 800, letterSpacing: 3, background: 'linear-gradient(135deg,#00d4aa,#00a8ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>PULSE</div>
@@ -223,84 +222,52 @@ Return ONLY a JSON object with this exact structure:
         </div>
         <div style={{ textAlign: 'center', background: '#141920', border: '1px solid #1e2a38', borderRadius: 10, padding: '10px 20px' }}>
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, color: '#00d4aa' }}>{daysToRace}</div>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e' }}>DAYS TO IRONMAN MELBOURNE</div>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e' }}>NOV 2027 · {WEEKS_TO_RACE} WEEKS</div>
+          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e' }}>DAYS TO IRONMAN MELBOURNE · {WEEKS_TO_RACE} WEEKS</div>
         </div>
       </div>
-
-      {/* Controls */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 20 }}>
-        <div style={{ background: '#141920', border: '1px solid #1e2a38', borderRadius: 8, padding: 12 }}>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e', marginBottom: 6 }}>SOCCER GAME DAY</div>
-          <select value={soccerGameDay} onChange={e => setSoccerGameDay(e.target.value)}
-            style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }}>
-            <option value="saturday">Saturday</option>
-            <option value="sunday">Sunday</option>
-          </select>
-        </div>
-        <div style={{ background: '#141920', border: '1px solid #1e2a38', borderRadius: 8, padding: 12 }}>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e', marginBottom: 6 }}>TRAINING PHASE</div>
-          <select value={phase} onChange={e => setPhase(e.target.value)}
-            style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }}>
-            <option value="base">Base building</option>
-            <option value="build">Build phase</option>
-            <option value="peak">Peak training</option>
-            <option value="taper">Race taper</option>
-          </select>
-        </div>
-        <div style={{ background: '#141920', border: '1px solid #1e2a38', borderRadius: 8, padding: 12 }}>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e', marginBottom: 6 }}>BODY WEIGHT (KG)</div>
-          <input type="number" value={bodyWeight} onChange={e => setBodyWeight(Number(e.target.value))}
-            style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }} />
-        </div>
-        <div style={{ background: '#141920', border: '1px solid #1e2a38', borderRadius: 8, padding: 12 }}>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e', marginBottom: 6 }}>TRAINING WEEK</div>
-          <input type="number" value={weekNumber} onChange={e => setWeekNumber(Number(e.target.value))} min="1" max={WEEKS_TO_RACE}
-            style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }} />
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+        {[
+          { label: 'Soccer game day', el: <select value={soccerGameDay} onChange={e => setSoccerGameDay(e.target.value)} style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }}><option value="saturday">Saturday</option><option value="sunday">Sunday</option></select> },
+          { label: 'Training phase', el: <select value={phase} onChange={e => setPhase(e.target.value)} style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }}><option value="base">Base building</option><option value="build">Build phase</option><option value="peak">Peak training</option><option value="taper">Race taper</option></select> },
+          { label: 'Body weight (kg)', el: <input type="number" value={bodyWeight} onChange={e => setBodyWeight(Number(e.target.value))} style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }} /> },
+          { label: 'Training week', el: <input type="number" value={weekNumber} onChange={e => setWeekNumber(Number(e.target.value))} min="1" style={{ background: '#0e1219', border: '1px solid #1e2a38', borderRadius: 6, padding: '6px 10px', color: '#e8eef5', fontFamily: 'DM Mono, monospace', fontSize: 11, width: '100%' }} /> },
+        ].map((item, i) => (
+          <div key={i} style={{ background: '#141920', border: '1px solid #1e2a38', borderRadius: 8, padding: 12 }}>
+            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: '#5a6a7e', marginBottom: 6, textTransform: 'uppercase' }}>{item.label}</div>
+            {item.el}
+          </div>
+        ))}
       </div>
-
-      <button onClick={generatePlan} disabled={loading} style={{
-        background: loading ? '#1e2a38' : 'linear-gradient(135deg,#00d4aa,#00a8ff)',
-        border: 'none', borderRadius: 8, padding: '12px 28px', color: loading ? '#5a6a7e' : '#000',
-        fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700, letterSpacing: 1,
-        cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 24, width: '100%'
-      }}>
-        {loading ? '⚡ Coach Pulse is building your plan...' : '⚡ Generate This Week\'s Plan'}
+      <button onClick={generatePlan} disabled={loading} style={{ background: loading ? '#1e2a38' : 'linear-gradient(135deg,#00d4aa,#00a8ff)', border: 'none', borderRadius: 8, padding: '12px 28px', color: loading ? '#5a6a7e' : '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700, letterSpacing: 1, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 24, width: '100%' }}>
+        {loading ? '⚡ Coach Pulse is building your plan...' : "⚡ Generate This Week's Plan"}
       </button>
-
-      {/* Plan output */}
       {plan && (
         <div>
-          {/* Coach note */}
-          <div style={{ background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: 10, padding: 16, marginBottom: 20, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <div style={{ background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: 10, padding: 16, marginBottom: 20, display: 'flex', gap: 14 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#141920', border: '1px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>⚡</div>
             <div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, fontWeight: 700, color: '#00d4aa', letterSpacing: 1, marginBottom: 4 }}>COACH PULSE · WEEK {weekNumber} NOTE</div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, fontWeight: 700, color: '#00d4aa', letterSpacing: 1, marginBottom: 4 }}>COACH PULSE · WEEK {weekNumber}</div>
               <div style={{ fontSize: 13, color: '#e8eef5', lineHeight: 1.6 }}>{plan.coachNote}</div>
-              <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#5a6a7e' }}>📅 {plan.weekTheme}</span>
                 <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#00d4aa' }}>⏱ {plan.totalHours}</span>
                 <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#f59e0b' }}>🎯 {plan.keyFocus}</span>
               </div>
             </div>
           </div>
-
-          {/* Weekly calendar */}
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: 2, color: '#5a6a7e', textTransform: 'uppercase', marginBottom: 10 }}>Weekly schedule</div>
-          <WeekCalendar plan={plan} soccerGameDay={soccerGameDay} />
-
-          {/* Weekly goals */}
+          <WeekCalendar plan={plan} />
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: 2, color: '#5a6a7e', textTransform: 'uppercase', marginTop: 24, marginBottom: 10 }}>Weekly targets</div>
           <WeeklyGoals goals={plan.weeklyGoals} />
-
-          {/* Nutrition */}
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: 2, color: '#5a6a7e', textTransform: 'uppercase', marginTop: 24, marginBottom: 10 }}>Nutrition targets · body recomposition</div>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: 2, color: '#5a6a7e', textTransform: 'uppercase', marginTop: 24, marginBottom: 10 }}>Nutrition · body recomposition</div>
           <NutritionCard nutrition={plan.nutrition} />
-
-          <div style={{ height: 40 }} />
         </div>
       )}
+      <ChatBubble plan={plan} profile={profile} />
     </div>
   )
-}
+}`;
+
+fs.writeFileSync('src/components/PlanGenerator.jsx', code);
+console.log('Done!', fs.statSync('src/components/PlanGenerator.jsx').size, 'bytes');
+EOF
