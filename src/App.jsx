@@ -23,6 +23,7 @@ export default function App() {
   const [page, setPage] = useState(() => localStorage.getItem('pulse_page') || 'dashboard')
   const [isDark, setIsDark] = useState(() => localStorage.getItem('pulse_theme') !== 'light')
   const navigateTo = (p) => { setPage(p); localStorage.setItem('pulse_page', p) }
+  const navigateTo = (p) => { setPage(p); localStorage.setItem('pulse_page', p) }
   const t = isDark ? THEMES.dark : THEMES.light
 
   const toggleTheme = () => {
@@ -58,7 +59,10 @@ export default function App() {
 
     let initialLoadDone = false
     setTimeout(() => { initialLoadDone = true }, 2000)
+    let initialLoadDone = false
+    setTimeout(() => { initialLoadDone = true }, 2000)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!initialLoadDone) return
       if (!initialLoadDone) return
       if (session?.user) {
         setUser(session.user)
@@ -108,6 +112,7 @@ export default function App() {
     setTempProfile(null)
     localStorage.removeItem('pulse_profile')
     localStorage.removeItem('pulse_weekly_plan')
+    localStorage.removeItem('pulse_page')
     localStorage.removeItem('pulse_page')
     setStep('onboarding')
   }
