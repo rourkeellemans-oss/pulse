@@ -26,6 +26,15 @@ export default function PlanGenerator({ user }) {
   const [bodyWeight, setBodyWeight] = useState(80)
   const [phase, setPhase] = useState('base')
   const [weekNumber, setWeekNumber] = useState(1)
+  const [readiness, setReadiness] = useState(null)
+
+  useEffect(() => { if (user) fetchReadiness() }, [user])
+
+  const fetchReadiness = async () => {
+    const today = new Date().toISOString().split('T')[0]
+    const { data } = await supabase.from('daily_stats').select('training_readiness,hrv,body_battery').eq('user_id', user.id).eq('date', today).single()
+    if (data?.training_readiness) setReadiness(data)
+  }
 
   useEffect(() => { loadSavedPlan() }, [])
   const loadSavedPlan = async () => {
