@@ -20,8 +20,9 @@ export default function App() {
     try { const s = localStorage.getItem('pulse_profile'); return s ? JSON.parse(s) : null } catch { return null }
   })
   const [tempProfile, setTempProfile] = useState(null)
-  const [page, setPage] = useState('dashboard')
+  const [page, setPage] = useState(() => localStorage.getItem('pulse_page') || 'dashboard')
   const [isDark, setIsDark] = useState(() => localStorage.getItem('pulse_theme') !== 'light')
+  const navigateTo = (p) => { setPage(p); localStorage.setItem('pulse_page', p) }
   const t = isDark ? THEMES.dark : THEMES.light
 
   const toggleTheme = () => {
@@ -55,7 +56,10 @@ export default function App() {
       }
     })
 
+    let initialLoadDone = false
+    setTimeout(() => { initialLoadDone = true }, 2000)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!initialLoadDone) return
       if (session?.user) {
         setUser(session.user)
       } else {
@@ -82,7 +86,7 @@ export default function App() {
   const handleOnboardingComplete = (p) => {
     setTempProfile(p)
     setStep('preview')
-    setPage('plan')
+    navigateTo('plan')
   }
 
   const handleSavePlan = () => setStep('auth')
@@ -104,14 +108,15 @@ export default function App() {
     setTempProfile(null)
     localStorage.removeItem('pulse_profile')
     localStorage.removeItem('pulse_weekly_plan')
+    localStorage.removeItem('pulse_page')
     setStep('onboarding')
   }
 
   const NavBar = () => (
     <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:999, display:'flex', background:t.surface, borderTop:`1px solid ${t.border}`, padding:'8px 16px', gap:8 }}>
-      <button onClick={() => setPage('dashboard')} style={{ flex:1, background: page==='dashboard' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='dashboard' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Dashboard</button>
-      <button onClick={() => setPage('plan')} style={{ flex:1, background: page==='plan' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='plan' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Plan</button>
-      <button onClick={() => setPage('checkin')} style={{ flex:1, background: page==='checkin' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='checkin' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Check In</button>
+      <button onClick={() => navigateTo('dashboard')} style={{ flex:1, background: page==='dashboard' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='dashboard' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Dashboard</button>
+      <button onClick={() => navigateTo('plan')} style={{ flex:1, background: page==='plan' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='plan' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Plan</button>
+      <button onClick={() => navigateTo('checkin')} style={{ flex:1, background: page==='checkin' ? `linear-gradient(135deg,${t.accent},${t.accent2})` : t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 16px', color: page==='checkin' ? '#fff' : t.text, fontFamily:'Barlow Condensed, sans-serif', fontSize:15, fontWeight:700, cursor:'pointer' }}>Check In</button>
       <button onClick={toggleTheme} style={{ background:t.card2, border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 14px', color:t.muted, fontSize:14, cursor:'pointer' }}>{isDark ? '☀️' : '🌙'}</button>
       {step === 'app' && <button onClick={handleSignOut} style={{ background:'transparent', border:`1px solid ${t.border}`, borderRadius:8, padding:'10px 14px', color:t.muted, fontFamily:'Barlow Condensed, sans-serif', fontSize:13, cursor:'pointer' }}>↩</button>}
       {step === 'preview' && <button onClick={handleSavePlan} style={{ background:`linear-gradient(135deg,${t.accent},${t.accent2})`, border:'none', borderRadius:8, padding:'10px 16px', color:'#fff', fontFamily:'Barlow Condensed, sans-serif', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>💾 Save</button>}
