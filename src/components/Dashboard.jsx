@@ -241,7 +241,7 @@ export default function Dashboard() {
       </div>
 
       {/* Body */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 340px', gridTemplateRows: 'auto 1fr', flex: 1, gap: 1, background: 'var(--subtle)', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gridTemplateRows: 'auto', flex: 1, gap: 1, background: 'var(--subtle)', overflow: 'hidden' }}>
 
         {/* ── Readiness ── */}
         <div style={{ background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
