@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase'
 const RACE_DATE = new Date('2027-11-07')
 const CURRENT_DATE = new Date()
 const WEEKS_TO_RACE = Math.ceil((RACE_DATE - CURRENT_DATE) / (1000 * 60 * 60 * 24 * 7))
@@ -26,7 +27,18 @@ export default function PlanGenerator() {
   const [phase, setPhase] = useState('base')
   const [weekNumber, setWeekNumber] = useState(1)
 
-  useEffect(() => { if (!plan) generatePlan() }, [])
+  useEffect(() => { loadSavedPlan() }, [])
+  const loadSavedPlan = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      setUserId(user.id)
+      const { data } = await supabase.from('weekly_plans').select('plan').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).single()
+      if (data && data.plan) { setPlan(data.plan); return }
+    } else {
+      try { const s = localStorage.getItem('pulse_weekly_plan'); if (s) { setPlan(JSON.parse(s)); return } } catch {}
+    }
+    generatePlan()
+  }
 
   const generatePlan = async () => {
     setLoading(true)
@@ -46,6 +58,9 @@ export default function PlanGenerator() {
       const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
       setPlan(parsed)
       localStorage.setItem('pulse_weekly_plan', JSON.stringify(parsed))
+      if (userId) {
+        await supabase.from('weekly_plans').upsert({ user_id: userId, plan: parsed, week_number: weekNumber, phase, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      }
     } catch(e) { console.error(e) }
     setLoading(false)
   }
