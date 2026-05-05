@@ -73,7 +73,9 @@ export default function App() {
       localStorage.setItem('pulse_profile', JSON.stringify(data))
       setStep('app')
     } else {
-      setStep('onboarding')
+      // Only go to onboarding if we have no cached profile to fall back on
+      const cached = localStorage.getItem('pulse_profile')
+      if (!cached) setStep('onboarding')
     }
   }
 
