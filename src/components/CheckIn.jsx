@@ -15,6 +15,35 @@ export default function CheckIn({ t, user }) {
   const [todayStats, setTodayStats] = useState(null)
   const [sessions, setSessions] = useState([])
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [garminEmail, setGarminEmail] = useState(() => localStorage.getItem('garmin_email') || '')
+  const [garminPass, setGarminPass] = useState('')
+  const [showGarminLogin, setShowGarminLogin] = useState(false)
+
+  const syncGarmin = async () => {
+    if (!garminEmail || !garminPass) { setShowGarminLogin(true); return }
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/garmin-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: garminEmail, password: garminPass })
+      })
+      const data = await res.json()
+      if (data.error) { alert('Garmin sync failed: ' + data.error); setSyncing(false); return }
+      localStorage.setItem('garmin_email', garminEmail)
+      setStats(p => ({...p,
+        hrv: data.hrv ?? p.hrv,
+        body_battery: data.body_battery ?? p.body_battery,
+        sleep_score: data.sleep_score ?? p.sleep_score,
+        resting_hr: data.resting_hr ?? p.resting_hr,
+        stress: data.stress ?? p.stress,
+        training_readiness: data.training_readiness ?? p.training_readiness,
+      }))
+      setShowGarminLogin(false)
+    } catch(e) { alert('Sync error: ' + e.message) }
+    setSyncing(false)
+  }
   const [saved, setSaved] = useState(false)
 
   const [stats, setStats] = useState({ hrv: '', body_battery: '', sleep_score: '', sleep_hours: '', resting_hr: '', stress: '', training_readiness: '', notes: '' })
@@ -100,7 +129,19 @@ export default function CheckIn({ t, user }) {
       {tab === 'stats' && (
         <div>
           <div style={{ background: t.surface, borderRadius: 12, padding: 16, border: `1px solid ${t.border}`, boxShadow: t.shadow, marginBottom: 16 }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 16 }}>Today's health metrics</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, color: t.text }}>Today's health metrics</div>
+            <button onClick={() => showGarminLogin ? syncGarmin() : setShowGarminLogin(o=>!o)} disabled={syncing} style={{ background: `linear-gradient(135deg,${t.accent},${t.accent2})`, border: 'none', borderRadius: 8, padding: '6px 12px', color: '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{syncing ? '⏳ Syncing...' : '⚡ Sync Garmin'}</button>
+          </div>
+          {showGarminLogin && (
+            <div style={{ background: t.card2, borderRadius: 10, padding: 12, marginBottom: 16, border: `1px solid ${t.border}` }}>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: t.muted, marginBottom: 8 }}>GARMIN CONNECT CREDENTIALS</div>
+              <input type="email" value={garminEmail} onChange={e=>setGarminEmail(e.target.value)} placeholder="Garmin email" style={{ display: 'block', width: '100%', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 6, padding: '8px 10px', color: t.text, fontFamily: 'Barlow, sans-serif', fontSize: 13, marginBottom: 8, boxSizing: 'border-box' }} />
+              <input type="password" value={garminPass} onChange={e=>setGarminPass(e.target.value)} placeholder="Garmin password" style={{ display: 'block', width: '100%', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 6, padding: '8px 10px', color: t.text, fontFamily: 'Barlow, sans-serif', fontSize: 13, marginBottom: 8, boxSizing: 'border-box' }} />
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: t.muted, marginBottom: 8 }}>⚠️ Credentials sent directly to Garmin. Not stored on our servers.</div>
+              <button onClick={syncGarmin} disabled={syncing} style={{ width: '100%', background: `linear-gradient(135deg,${t.accent},${t.accent2})`, border: 'none', borderRadius: 8, padding: 10, color: '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{syncing ? '⏳ Syncing...' : '⚡ Sync now'}</button>
+            </div>
+          )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div style={field}><label style={lbl}>Training Readiness</label><input type="number" value={stats.training_readiness || ''} onChange={e => setStats(p => ({...p, training_readiness: e.target.value}))} placeholder="0-100 (from Garmin)" style={inp({})} /></div>
               <div style={field}><label style={lbl}>HRV (ms)</label><input type="number" value={stats.hrv || ''} onChange={e => setStats(p => ({...p, hrv: e.target.value}))} placeholder="e.g. 52" style={inp({})} /></div>
