@@ -31,12 +31,15 @@ const TAG_COLORS = {swim:'#00a8ff',run:'#00d4aa',bike:'#f59e0b',gym:'#a855f7',so
 const buildSystemPrompt = (stats) => {
   const r = stats?.training_readiness
   const readinessText = r ? `Training Readiness: ${r}/100 (${r>=70?'Good to go':r>=50?'Moderate — keep intensity controlled':'Low — recommend easy or recovery only'})` : 'Training Readiness: not logged today'
-  const hrvText = stats?.hrv ? `HRV: ${stats.hrv}ms` : ''
-  const bbText = stats?.body_battery ? `Body Battery: ${stats.body_battery}` : ''
+  const hrvText = stats?.hrv ? `HRV: ${stats.hrv}ms (${stats.hrv_status || ''})` : ''
+  const bbText = stats?.body_battery ? `Body Battery: ${stats.body_battery} (overnight gain: +${stats.body_battery_change || '?'})` : ''
   const sleepText = stats?.sleep_score ? `Sleep: ${stats.sleep_score}/100${stats.sleep_hours ? ' ('+stats.sleep_hours+')' : ''}` : ''
   const hrText = stats?.resting_hr ? `Resting HR: ${stats.resting_hr}bpm` : ''
   const garminData = [readinessText, hrvText, bbText, sleepText, hrText].filter(Boolean).join(', ')
-  return `You are Coach Pulse, expert AI triathlon coach. Athlete: Ironman Melbourne Nov 2027, soccer Thu + alternating weekends, gym 3x/week, body recomposition. Today's Garmin data: ${garminData}. Use these real numbers when giving advice — adjust session intensity based on readiness. Be warm, specific, 2-4 sentences.`
+  const sleepDetail = stats?.sleep_deep_minutes ? `Sleep stages — Deep: ${stats.sleep_deep_minutes}min, REM: ${stats.sleep_rem_minutes}min, Light: ${stats.sleep_light_minutes || '?'}min` : ''
+  const respText = stats?.respiration_avg ? `Avg respiration: ${stats.respiration_avg} breaths/min` : ''
+  const feedbackText = stats?.sleep_feedback ? `Sleep feedback: ${stats.sleep_feedback.replace(/_/g,' ').toLowerCase()}` : ''
+  return `You are Coach Pulse, expert AI triathlon coach. Athlete: Ironman Melbourne Nov 2027, soccer Thu + alternating weekends, gym 3x/week, body recomposition. Today's Garmin data: ${garminData}. [sleepDetail, respText, feedbackText].filter(Boolean).join('. ')}. Use these real numbers when giving advice — adjust session intensity based on readiness. Be warm, specific, 2-4 sentences.`
 }
 function useIsMobile(){const [m,setM]=useState(window.innerWidth<768);useEffect(()=>{const h=()=>setM(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h)},[]);return m}
 function ReadinessRing({score,t}){const r=48,circ=2*Math.PI*r,fill=(score/100)*circ,col=score>=80?t.accent:score>=65?t.amber:'#ef4444',label=score>=80?'Go hard':score>=65?'Moderate':'Take it easy';return(<div style={{position:'relative',width:120,height:120,flexShrink:0}}><svg width="120" height="120" style={{transform:'rotate(-90deg)'}}><circle cx="60" cy="60" r={r} fill="none" stroke={t.subtle} strokeWidth="8"/><circle cx="60" cy="60" r={r} fill="none" stroke={col} strokeWidth="8" strokeDasharray={`${fill} ${circ}`} strokeLinecap="round"/></svg><div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}><div style={{fontFamily:'Barlow Condensed, sans-serif',fontSize:30,fontWeight:800,color:col,lineHeight:1}}>{score}</div><div style={{fontFamily:'DM Mono, monospace',fontSize:8,color:t.muted,marginTop:2}}>READINESS</div><div style={{fontFamily:'DM Mono, monospace',fontSize:8,color:col,marginTop:1}}>{label}</div></div></div>)}

@@ -34,19 +34,45 @@ export default function CheckIn({ t, user }) {
       localStorage.setItem('garmin_email', garminEmail)
       setStats(p => ({...p,
         hrv: data.hrv ?? p.hrv,
+        hrv_status: data.hrv_status ?? p.hrv_status,
         body_battery: data.body_battery ?? p.body_battery,
+        body_battery_change: data.body_battery_change ?? p.body_battery_change,
         sleep_score: data.sleep_score ?? p.sleep_score,
+        sleep_hours: data.sleep_hours ?? p.sleep_hours,
+        sleep_deep_minutes: data.sleep_deep_minutes ?? p.sleep_deep_minutes,
+        sleep_rem_minutes: data.sleep_rem_minutes ?? p.sleep_rem_minutes,
+        sleep_feedback: data.sleep_feedback ?? p.sleep_feedback,
         resting_hr: data.resting_hr ?? p.resting_hr,
         stress: data.stress ?? p.stress,
+        respiration_avg: data.respiration_avg ?? p.respiration_avg,
         training_readiness: data.training_readiness ?? p.training_readiness,
       }))
+      // Auto-import recent activities
+      if (data.recent_activities?.length && user) {
+        const today = new Date().toISOString().split('T')[0]
+        const todayActivities = data.recent_activities.filter(a => a.date?.startsWith(today))
+        for (const a of todayActivities) {
+          const typeMap = { running:'Run', lap_swimming:'Swim', swimming:'Swim', cycling:'Bike', strength_training:'Gym', soccer:'Soccer' }
+          const discipline = typeMap[a.type] || 'Other'
+          const paceMs = a.avg_pace
+          const paceMinKm = paceMs > 0 ? Math.round(1000/paceMs/60*100)/100 : null
+          await supabase.from('session_logs').upsert({
+            user_id: user.id, date: today, discipline,
+            duration_minutes: a.duration_minutes,
+            distance: a.distance_km,
+            distance_unit: 'km',
+            notes: `Auto-imported from Garmin: ${a.name}. Avg HR: ${a.avg_hr??'-'}bpm, Calories: ${a.calories??'-'}, Training effect: ${a.training_effect?.toFixed(1)??'-'}`,
+            completed: true,
+          }, { onConflict: 'user_id,date,discipline' })
+        }
+      }
       setShowGarminLogin(false)
     } catch(e) { alert('Sync error: ' + e.message) }
     setSyncing(false)
   }
   const [saved, setSaved] = useState(false)
 
-  const [stats, setStats] = useState({ hrv: '', body_battery: '', sleep_score: '', sleep_hours: '', resting_hr: '', stress: '', training_readiness: '', notes: '' })
+  const [stats, setStats] = useState({ hrv: '', body_battery: '', sleep_score: '', sleep_hours: '', resting_hr: '', stress: '', training_readiness: '', respiration_avg: '', sleep_deep_minutes: '', sleep_rem_minutes: '', hrv_status: '', body_battery_change: '', sleep_feedback: '', notes: '' })
   const [session, setSession] = useState({ discipline: 'Run', duration_minutes: '', distance: '', distance_unit: 'km', perceived_effort: 3, notes: '', completed: true })
 
   useEffect(() => { if (user) { loadTodayStats(); loadSessions() } }, [user])
