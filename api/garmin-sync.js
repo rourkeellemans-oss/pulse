@@ -11,19 +11,29 @@ export default async function handler(req, res) {
     await client.login()
     
     const today = new Date().toISOString().split('T')[0]
-    const [stats, hrv, readiness] = await Promise.allSettled([
-      client.getUserStats(today),
-      client.getHrvData(today),
-      client.getTrainingReadiness(today),
+
+    const [sleep, hr, wellness, hrv, readiness] = await Promise.allSettled([
+      client.getSleepData(today),
+      client.getHeartRate(today),
+      client.get(`/wellness-service/wellness/dailySummary/${today}`),
+      client.get(`/hrv-service/hrv/${today}`),
+      client.get(`/training-readiness-service/training-readiness/${today}`),
     ])
 
+    const sleepVal = sleep.value?.dailySleepDTO
+    const hrVal = hr.value
+    const wellVal = wellness.value
+    const hrvVal = hrv.value
+
     res.json({
-      hrv: hrv.value?.hrvSummary?.lastNight ?? null,
-      body_battery: stats.value?.bodyBatteryMostRecentValue ?? null,
-      sleep_score: stats.value?.sleepingSeconds ? Math.round(stats.value.sleepingSeconds/3600*10) : null,
-      resting_hr: stats.value?.restingHeartRate ?? null,
-      stress: stats.value?.averageStressLevel ?? null,
-      training_readiness: readiness.value?.[0]?.score ?? null,
+      sleep_score: sleepVal?.sleepScores?.overall?.value ?? null,
+      sleep_hours: sleepVal?.sleepTimeSeconds ? 
+        `${Math.floor(sleepVal.sleepTimeSeconds/3600)}h ${Math.floor((sleepVal.sleepTimeSeconds%3600)/60)}m` : null,
+      resting_hr: hrVal?.restingHeartRate ?? null,
+      body_battery: wellVal?.bodyBatteryMostRecentValue ?? null,
+      stress: wellVal?.averageStressLevel ?? null,
+      hrv: hrvVal?.hrvSummary?.lastNight ?? null,
+      training_readiness: readiness.value?.score ?? readiness.value?.[0]?.score ?? null,
     })
   } catch(e) {
     res.status(401).json({ error: e.message })
