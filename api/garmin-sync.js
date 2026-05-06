@@ -20,20 +20,15 @@ export default async function handler(req, res) {
       client.get(`/training-readiness-service/training-readiness/${today}`),
     ])
 
-    const sleepVal = sleep.value?.dailySleepDTO
-    const hrVal = hr.value
-    const wellVal = wellness.value
-    const hrvVal = hrv.value
-
+    // Return raw data so we can see the structure
     res.json({
-      sleep_score: sleepVal?.sleepScores?.overall?.value ?? null,
-      sleep_hours: sleepVal?.sleepTimeSeconds ? 
-        `${Math.floor(sleepVal.sleepTimeSeconds/3600)}h ${Math.floor((sleepVal.sleepTimeSeconds%3600)/60)}m` : null,
-      resting_hr: hrVal?.restingHeartRate ?? null,
-      body_battery: wellVal?.bodyBatteryMostRecentValue ?? null,
-      stress: wellVal?.averageStressLevel ?? null,
-      hrv: hrvVal?.hrvSummary?.lastNight ?? null,
-      training_readiness: readiness.value?.score ?? readiness.value?.[0]?.score ?? null,
+      debug: {
+        sleep: sleep.status === 'fulfilled' ? sleep.value : sleep.reason?.message,
+        hr: hr.status === 'fulfilled' ? hr.value : hr.reason?.message,
+        wellness: wellness.status === 'fulfilled' ? wellness.value : wellness.reason?.message,
+        hrv: hrv.status === 'fulfilled' ? hrv.value : hrv.reason?.message,
+        readiness: readiness.status === 'fulfilled' ? readiness.value : readiness.reason?.message,
+      }
     })
   } catch(e) {
     res.status(401).json({ error: e.message })
