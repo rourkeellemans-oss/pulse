@@ -10,17 +10,22 @@ export default async function handler(req, res) {
     const client = new GarminConnect({ username: email, password })
     await client.login()
     
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date()
+    const dateStr = today.toISOString().split('T')[0]
 
-    const [sleep, hr, wellness, hrv, readiness] = await Promise.allSettled([
+    const [sleep, hr, steps] = await Promise.allSettled([
       client.getSleepData(today),
       client.getHeartRate(today),
-      client.get(`/wellness-service/wellness/dailySummary/${today}`),
-      client.get(`/hrv-service/hrv/${today}`),
-      client.get(`/training-readiness-service/training-readiness/${today}`),
+      client.getSteps(today),
     ])
 
-    // Return raw data so we can see the structure
+    // Try wellness and HRV via direct get with correct base
+    const [wellness, hrv, readiness] = await Promise.allSettled([
+      client.get(`https://connect.garmin.com/wellness-service/wellness/dailySummary/${dateStr}`),
+      client.get(`https://connect.garmin.com/hrv-service/hrv/${dateStr}`),
+      client.get(`https://connect.garmin.com/training-readiness-service/training-readiness/${dateStr}`),
+    ])
+
     res.json({
       debug: {
         sleep: sleep.status === 'fulfilled' ? sleep.value : sleep.reason?.message,
