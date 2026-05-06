@@ -132,7 +132,7 @@ export default function App() {
     <div style={{ paddingBottom:70 }}>
       <NavBar />
       {page === 'dashboard'
-        ? <Dashboard t={t} onToggleTheme={toggleTheme} isDark={isDark} user={user} />
+        ? <Dashboard t={t} onToggleTheme={toggleTheme} isDark={isDark} user={user} profile={profile} />
         : page === 'plan' ? <PlanGenerator profile={profile || tempProfile} t={t} isDark={isDark} user={user} />
         : <CheckIn t={t} user={user} />
       }
